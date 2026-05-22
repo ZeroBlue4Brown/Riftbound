@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Riftbound Score Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            background: #1a1a2e;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- TURN BAR --- */
+        .turn-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            min-height: 50px;
+            flex-shrink: 0;
+        }
+
+        .turn-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .turn-number {
+            font-size: 20px;
+            font-weight: 800;
+            color: #e94560;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .turn-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #0f3460;
+            background: #16213e;
+            color: #e0e0e0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .turn-btn:active {
+            background: #0f3460;
+            transform: scale(0.92);
+        }
+
+        .turn-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .turn-btn.next-turn {
+            background: #e94560;
+            border-color: #e94560;
+            color: #fff;
+        }
+
+        .turn-btn.next-turn:active {
+            background: #c73e54;
+        }
+
+        /* --- TURN TYPE SELECTOR --- */
+        .turn-type-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 6px 12px;
+            background: #16213e;
+            border-bottom: 2px solid #0f3460;
+            flex-shrink: 0;
+        }
+
+        .turn-type-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: 2px solid #333;
+            background: transparent;
+            color: #aaa;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .turn-type-btn .icon {
+            font-size: 18px;
+        }
+
+        .turn-type-btn.active-conquer {
+            border-color: #e94560;
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+
+        .turn-type-btn.active-hold {
+            border-color: #4ea8de;
+            background: rgba(78, 168, 222, 0.2);
+            color: #4ea8de;
+        }
+
+        /* --- PLAYERS AREA --- */
+        .players-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .player-half {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s ease;
+            padding: 10px;
+        }
+
+        .player-half.player-1 {
+            background: #1a1a2e;
+            border-bottom: 2px solid #333;
+        }
+
+        .player-half.player-2 {
+            background: #1a1a2e;
+            transform: rotate(180deg);
+        }
+
+        .player-half.active.player-1 {
+            background: linear-gradient(180deg, #1a1a2e 0%, #2a1a3e 100%);
+            border-bottom: 2px solid #e94560;
+        }
+
+        .player-half.active.player-2 {
+            background: linear-gradient(180deg, #1a1a2e 0%, #1a2a3e 100%);
+        }
+
+        .active-indicator {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #e94560;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .player-half.active .active-indicator {
+            opacity: 1;
+        }
+
+        .player-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #888;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .player-half.active .player-name {
+            color: #e0e0e0;
+        }
+
+        .score-display {
+            font-size: 80px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 4px 0;
+            color: #555;
+            transition: color 0.3s;
+        }
+
+        .player-half.active .score-display {
+            color: #fff;
+        }
+
+        .score-buttons {
+            display: flex;
+            gap: 30px;
+            margin-top: 8px;
+        }
+
+        .score-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            font-size: 32px;
+            font-weight: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .player-half.active .score-btn {
+            border-color: #555;
+            color: #ccc;
+        }
+
+        .score-btn:active {
+            transform: scale(0.9);
+        }
+
+        .player-half.active .score-btn.plus:active {
+            background: rgba(233, 69, 96, 0.3);
+            border-color: #e94560;
+        }
+
+        .player-half.active .score-btn.minus:active {
+            background: rgba(78, 168, 222, 0.3);
+            border-color: #4ea8de;
+        }
+
+        .score-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* --- HISTORY --- */
+        .history-list {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 280px;
+        }
+
+        .history-dot {
+            min-width: 28px;
+            height: 22px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 1;
+            padding: 0 4px;
+            gap: 2px;
+        }
+
+        .history-dot.conquer {
+            background: rgba(233, 69, 96, 0.3);
+            color: #e94560;
+        }
+
+        .history-dot.hold {
+            background: rgba(78, 168, 222, 0.3);
+            color: #4ea8de;
+        }
+
+        /* --- RESET OVERLAY --- */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .overlay.visible {
+            display: flex;
+        }
+
+        .overlay-msg {
+            font-size: 18px;
+            color: #e0e0e0;
+            text-align: center;
+            padding: 0 30px;
+        }
+
+        .overlay-buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .overlay-btn {
+            padding: 12px 30px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .overlay-btn.confirm {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .overlay-btn.cancel {
+            background: #333;
+            color: #ccc;
+        }
+
+        /* --- RESET BUTTON --- */
+        .reset-btn {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 2px solid #e94560;
+            background: rgba(233, 69, 96, 0.1);
+            color: #e94560;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .reset-btn:active {
+            background: rgba(233, 69, 96, 0.3);
+            transform: translateX(-50%) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PLAYER 2 (top, rotated 180deg) -->
+    <div class="players-container">
+        <div class="player-half player-2" id="player2Half">
+            <div class="active-indicator">▶ TURNO ◀</div>
+            <div class="player-name">Giocatore 2</div>
+            <div class="score-display" id="score2">0</div>
+            <div class="score-buttons">
+                <button class="score-btn minus" onclick="changeScore(2, -1)">−</button>
+                <button class="score-btn plus" onclick="changeScore(2, 1)">+</button>
+            </div>
+            <div class="history-list" id="history2"></div>
+        </div>
+
+        <!-- TURN CONTROLS (center) -->
+        <div class="turn-bar">
+            <button class="turn-btn" id="prevTurnBtn" onclick="prevTurn()">◀</button>
+            <span class="turn-label">TURNO</span>
+            <span class="turn-number" id="turnNumber">1</span>
+            <button class="turn-btn next-turn" id="nextTurnBtn" onclick="nextTurn()">▶</button>
+        </div>
+        <div class="turn-type-bar">
+            <button class="turn-type-btn active-conquer" id="conquerBtn" onclick="setTurnType('conquer')">
+                <span class="icon">⚔️</span> Conquer
+            </button>
+            <button class="turn-type-btn" id="holdBtn" onclick="setTurnType('hold')">
+                <span class="icon">🛡️</span> Hold
+            </button>
+        </div>
+
+        <!-- PLAYER 1 (bottom) -->
+        <div class="player-half player-1 active" id="player1Half">
+            <div class="active-indicator">▶ TURNO ◀</div>
+            <div class="player-name">Giocatore 1</div>
+            <div class="score-display" id="score1">0</div>
+            <div class="score-buttons">
+                <button class="score-btn minus" onclick="changeScore(1, -1)">−</button>
+                <button class="score-btn plus" onclick="changeScore(1, 1)">+</button>
+            </div>
+            <div class="history-list" id="history1"></div>
+        </div>
+    </div>
+
+    <button class="reset-btn" onclick="confirmReset()">↺ Reset Partita</button>
+
+    <!-- UNDO CONFIRMATION -->
+    <div class="overlay" id="undoOverlay">
+        <div class="overlay-msg">Tornare al turno precedente?</div>
+        <div class="overlay-buttons">
+            <button class="overlay-btn cancel" onclick="closeUndoOverlay()">Annulla</button>
+            <button class="overlay-btn confirm" onclick="confirmPrevTurn()">Torna Indietro</button>
+        </div>
+    </div>
+
+    <!-- RESET CONFIRMATION -->
+    <div class="overlay" id="resetOverlay">
+        <div class="overlay-msg">Vuoi ricominciare la partita?</div>
+        <div class="overlay-buttons">
+            <button class="overlay-btn cancel" onclick="closeOverlay()">Annulla</button>
+            <button class="overlay-btn confirm" onclick="resetGame()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let state = {
+            currentTurn: 1,
+            currentPlayer: 1, // 1 or 2
+            turnType: 'conquer', // 'conquer' | 'hold'
+            scores: { 1: 0, 2: 0 },
+            // Each entry: { player, delta, turn, type, timestamp }
+            history: [],
+            // Snapshots for undo: array of previous states
+            turnSnapshots: []
+        };
+
+        // --- RENDER ---
+        function render() {
+            document.getElementById('turnNumber').textContent = state.currentTurn;
+            document.getElementById('score1').textContent = state.scores[1];
+            document.getElementById('score2').textContent = state.scores[2];
+
+            // Active player highlight
+            const p1 = document.getElementById('player1Half');
+            const p2 = document.getElementById('player2Half');
+            p1.classList.toggle('active', state.currentPlayer === 1);
+            p2.classList.toggle('active', state.currentPlayer === 2);
+
+            // Turn type buttons
+            const cBtn = document.getElementById('conquerBtn');
+            const hBtn = document.getElementById('holdBtn');
+            cBtn.className = 'turn-type-btn' + (state.turnType === 'conquer' ? ' active-conquer' : '');
+            hBtn.className = 'turn-type-btn' + (state.turnType === 'hold' ? ' active-hold' : '');
+
+            // Prev turn button
+            document.getElementById('prevTurnBtn').classList.toggle('disabled', state.turnSnapshots.length === 0);
+
+            // History dots
+            renderHistory(1);
+            renderHistory(2);
+        }
+
+        function renderHistory(player) {
+            const container = document.getElementById('history' + player);
+            const entries = state.history.filter(h => h.player === player);
+            container.innerHTML = entries.map(h => {
+                const cls = h.type === 'conquer' ? 'conquer' : 'hold';
+                const icon = h.type === 'conquer' ? '⚔' : '🛡';
+                const sign = h.delta > 0 ? '+' : '';
+                const star = h.isOpponentTurn ? '*' : '';
+                return `<div class="history-dot ${cls}" title="T${h.turn} ${h.type}: ${sign}${h.delta}${star}">T${h.turn} ${sign}${h.delta}${star}</div>`;
+            }).join('');
+        }
+
+        // --- ACTIONS ---
+        function changeScore(player, delta) {
+            const newScore = state.scores[player] + delta;
+            if (newScore < 0) return;
+
+            state.scores[player] = newScore;
+            state.history.push({
+                player: player,
+                delta: delta,
+                turn: state.currentTurn,
+                type: state.turnType,
+                isOpponentTurn: player !== state.currentPlayer,
+                timestamp: Date.now()
+            });
+            render();
+        }
+
+        function setTurnType(type) {
+            state.turnType = type;
+            render();
+        }
+
+        function nextTurn() {
+            // Save snapshot for undo
+            state.turnSnapshots.push(JSON.parse(JSON.stringify({
+                currentTurn: state.currentTurn,
+                currentPlayer: state.currentPlayer,
+                turnType: state.turnType,
+                scores: { ...state.scores },
+                history: [...state.history]
+            })));
+
+            // Alternate player, increment turn every 2 passes
+            if (state.currentPlayer === 1) {
+                state.currentPlayer = 2;
+            } else {
+                state.currentPlayer = 1;
+                state.currentTurn++;
+            }
+            render();
+        }
+
+        function prevTurn() {
+            if (state.turnSnapshots.length === 0) return;
+            document.getElementById('undoOverlay').classList.add('visible');
+        }
+
+        function closeUndoOverlay() {
+            document.getElementById('undoOverlay').classList.remove('visible');
+        }
+
+        function confirmPrevTurn() {
+            closeUndoOverlay();
+            const snap = state.turnSnapshots.pop();
+            state.currentTurn = snap.currentTurn;
+            state.currentPlayer = snap.currentPlayer;
+            state.turnType = snap.turnType;
+            state.scores = snap.scores;
+            state.history = snap.history;
+            render();
+        }
+
+        function confirmReset() {
+            document.getElementById('resetOverlay').classList.add('visible');
+        }
+
+        function closeOverlay() {
+            document.getElementById('resetOverlay').classList.remove('visible');
+        }
+
+        function resetGame() {
+            state = {
+                currentTurn: 1,
+                currentPlayer: 1,
+                turnType: 'conquer',
+                scores: { 1: 0, 2: 0 },
+                history: [],
+                turnSnapshots: []
+            };
+            closeOverlay();
+            render();
+        }
+
+        // --- INIT ---
+        render();
+    </script>
+</body>
+</html>
